@@ -1,0 +1,55 @@
+#include <list>
+#include <string>
+#include <iostream>
+
+// Step 1: Define the Entry Structure
+struct HashTableEntry {
+    std::string studentName; // The key
+    int assignedNumber;      // The value
+
+    // Constructor for convenience
+    HashTableEntry(const std::string& name, int number) : studentName(name), assignedNumber(number) {}
+};
+
+// Step 2: Define the Hash Table
+const int HASH_TABLE_SIZE = 10;
+std::list<HashTableEntry> hashTable[HASH_TABLE_SIZE];
+
+int hashFunction(const std::string& key) {
+    int sum = 0;
+    // Summing the ASCII values of the characters in the key
+    for(char c : key) {
+        sum += static_cast<int>(c);
+    }
+    // Applying modulo 10 to ensure it falls within our hash table slots
+    return sum % HASH_TABLE_SIZE;
+}
+
+void insertEntry(const std::string& name, int number) {
+    // Create a new HashTableEntry
+    HashTableEntry newEntry(name, number);
+
+    // Use the hash function to determine the slot index
+    int index = hashFunction(name);
+
+    // Append the new entry to the list in the corresponding slot
+    // Since each slot is a std::list, we can directly push_back the new entry
+    hashTable[index].push_back(newEntry);
+}
+
+int searchStudent(const std::string& name) {
+    // Use the hash function to find the slot index
+    int index = hashFunction(name);
+
+    // Search through the list at this slot
+    for (const auto& entry : hashTable[index]) {
+        if (entry.studentName == name) {
+            // If an entry with the matching name is found, return the assigned number
+            return entry.assignedNumber;
+        }
+    }
+
+    // If not found, you might want to indicate this somehow. For simplicity, we'll return -1.
+    // In real applications, you might throw an exception or use std::optional<int> for a safer approach.
+    return -1;
+}
