@@ -1,0 +1,39 @@
+Simple Hash Table Requirements
+
+Describe Hashing:I've used a simple hash function (hashFunction) that sums the ASCII values of the characters in a key and applies modulo operation based on the hash table size. This method is simple and understandable but might lead to collisions for keys with the same sum of ASCII values.
+
+Insert Function: insertEntry puts a value in the hash table based on its hash value.
+
+Contains Function: While explicitly not named contains, my searchStudent function serves this purpose by returning the value associated with a key if it exists.
+
+Delete Function (Optional): deleteStudent is implemented, removing a value based on its hash and confirming the action by returning a boolean.
+
+Double Hashing Hash Table Requirements
+
+Describe Hashing: I've created a double hashing with two hash functions (h1 and h2) and a doubleHashing function to calculate the hash index based on attempts. This is a more robust method to handle collisions and allows better distribution across the hash table.
+
+Insert Function: insertEntry uses double hashing to find an open slot for new entries, demonstrating an effective collision resolution strategy.
+
+Contains Function: Similar to the simple hash table, searchEntry checks for the presence of a key in the table.
+
+Delete Function (Optional): deleteEntry removes an entry based on its hash, utilizing double hashing to locate the entry.
+
+Collisions
+Simple Hash Table: In my simple hash table, collisions are handled by chaining, where each slot of the hash table contains a linked list (or std::list in C++) to store entries that hash to the same index. This method is straightforward and effective in handling collisions but can lead to increased search times as the lists grow longer, especially if many keys hash to the same index. The performance of the hash table degrades linearly with the number of collisions, making search, insert, and delete operations O(n) in the worst case, where n is the number of entries in a list at a given index.
+
+Double Hashing Hash Table: Double hashing aims to reduce as much as possible the clustering effect seen in simpler hash methods by using a secondary hash function when a collision occurs. This method spreads out the entries more evenly across the hash table, reducing the likelihood of repeated collisions at the same index. The primary advantage here is in the reduced average case time complexity for insert, search, and delete operations, which ideally remain close to O(1) even in the presence of collisions, provided the hash table is not near full capacity.
+
+Complexity
+Insertion: In the simple hash table, insertion is pretty straightforward, with a time complexity of O(1) in the best case (no collision) and O(n) in the worst case (all keys hash to the same index, leading to a long list). For the double hashing hash table, insertion remains O(1) in the best case but tends to maintain a closer to O(1) average time complexity even as the table fills up, because of a more effective distribution of entries across the table.
+
+Search: Searching in the simple hash table involves traversing a linked list at the hashed index, with a time complexity ranging from O(1) (key is at the beginning of the list or no collision) to O(n) (key is at the end of a long list). In double hashing, search operations can typically be completed faster on average, as the likelihood of having to search through many collisions is reduced.
+
+Deletion: Deletion complexity copies a lot of the search operations for both types of hash tables. In the simple hash table, deletion can require traversing a list, while double hashing usually allows for quicker access to the entry to be deleted.
+
+Overall Performance
+Simple Hash Table: Tends to be more straightforward to implement and understand but can suffer from performance degradation as the load factor increases and collisions become more frequent.
+
+Double Hashing Hash Table: Offers better average performance and collision management at the cost of a more complex implementation. It's more efficient in scenarios where a high load factor is expected, maintaining closer to O(1) performance for most operations.
+
+My final thoughts:
+The choice between a simple hash table and a double hashing hash table often comes down to the specific requirements of the application, including expected load factors, the importance of operation time complexity, and a developer's willingness to implement a more complex collision resolution strategy. Double hashing typically offers a better trade-off between complexity and performance, especially in scenarios where minimizing collisions and maintaining fast lookup times are critical.
