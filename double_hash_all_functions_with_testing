@@ -1,0 +1,115 @@
+#include <vector>
+#include <optional>
+#include <string>
+#include <iostream>
+
+// Step 1: Define the Hash Table Entry
+struct HashTableEntry {
+    std::string key; // Key (student's name)
+    int value;       // Value (unique ID or associated data)
+
+    // Constructor for convenience
+    HashTableEntry(const std::string& key, int value) : key(key), value(value) {}
+};
+
+// Define the Hash Table as a vector of optional HashTableEntry
+const int HASH_TABLE_SIZE = 100; // Example size, adjust based on needs
+std::vector<std::optional<HashTableEntry>> hashTable(HASH_TABLE_SIZE);
+
+int h1(const std::string& key) {
+    int hashValue = 0;
+    for (char c : key) {
+        hashValue += static_cast<int>(c);
+    }
+    return hashValue % HASH_TABLE_SIZE;
+}
+
+const int R = 97; // Example prime number smaller than HASH_TABLE_SIZE
+
+int h2(const std::string& key) {
+    int hashValue = 0;
+    for (char c : key) {
+        hashValue += static_cast<int>(c);
+    }
+    return R - (hashValue % R);
+}
+
+int doubleHashing(const std::string& key, int attempt) {
+    int hash1 = h1(key);
+    int hash2 = h2(key);
+    return (hash1 + attempt * hash2) % HASH_TABLE_SIZE;
+}
+
+bool insertEntry(const std::string& key, int value) {
+    int attempt = 0;
+
+    while (attempt < HASH_TABLE_SIZE) {
+        int newIndex = doubleHashing(key, attempt);
+        if (!hashTable[newIndex].has_value() || hashTable[newIndex]->key == key) {
+            hashTable[newIndex] = HashTableEntry(key, value);
+            return true;
+        }
+        attempt++;
+    }
+
+    std::cerr << "Hash table is full. Failed to insert key: " << key << std::endl;
+    return false;
+}
+
+std::optional<int> searchEntry(const std::string& key) {
+    int attempt = 0;
+
+    while (attempt < HASH_TABLE_SIZE) {
+        int newIndex = doubleHashing(key, attempt);
+        if (!hashTable[newIndex].has_value()) {
+            return std::nullopt;
+        } else if (hashTable[newIndex]->key == key) {
+            return hashTable[newIndex]->value;
+        }
+        attempt++;
+    }
+
+    return std::nullopt;
+}
+
+bool deleteEntry(const std::string& key) {
+    int attempt = 0;
+
+    while (attempt < HASH_TABLE_SIZE) {
+        int newIndex = doubleHashing(key, attempt);
+        if (!hashTable[newIndex].has_value()) {
+            return false;
+        } else if (hashTable[newIndex]->key == key) {
+            hashTable[newIndex].reset();
+            return true;
+        }
+        attempt++;
+    }
+
+    return false;
+}
+
+int main() {
+    // Insertion Test
+    std::cout << "Insertion Test\n";
+    insertEntry("Alice", 1);
+    insertEntry("Bob", 2);
+    insertEntry("Charlie", 3);
+
+    // Search Test
+    std::cout << "Search Test\n";
+    auto searchResult = searchEntry("Alice");
+    std::cout << "Searching for Alice: " << (searchResult.has_value() ? std::to_string(searchResult.value()) : "Not Found") << std::endl;
+    searchResult = searchEntry("Zoe");
+    std::cout << "Searching for Zoe: " << (searchResult.has_value() ? std::to_string(searchResult.value()) : "Not Found") << std::endl;
+
+    // Deletion Test
+    std::cout << "Deletion Test\n";
+    if (deleteEntry("Bob")) {
+        std::cout << "Bob deleted successfully.\n";
+    }
+    searchResult = searchEntry("Bob");
+    std::cout << "Searching for Bob after deletion: " << (searchResult.has_value() ? std::to_string(searchResult.value()) : "Not Found") << std::endl;
+
+    return 0;
+}
