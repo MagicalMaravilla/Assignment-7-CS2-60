@@ -1,0 +1,192 @@
+#include <vector>
+#include <optional>
+#include <string>
+#include <iostream>
+#include <stdexcept> // For std::runtime_error, std::invalid_argument
+#include <cstdlib>   // For std::rand
+#include <ctime>     // For std::time
+
+// Secure and robust hash table entry definition
+struct HashTableEntry {
+    std::string key; // Unique identifier for each entry
+    int value;       // Associated data with the key
+
+    // Constructor for initialization
+    HashTableEntry(const std::string& key, int value) : key(key), value(value) {}
+};
+
+// Encapsulates hash functions for flexible and secure hashing
+struct HashFunction {
+    static const int R = 97; // Prime number for secondary hashing
+
+    // Implements double hashing to efficiently resolve collisions
+    int operator()(const std::string& key, int attempt, int tableSize) const {
+        int hash1 = hashFunction(key, tableSize);
+        int hash2 = secondaryHash(key);
+        // Combine hashes to get index, ensuring it falls within the table size
+        return (hash1 + attempt * hash2) % tableSize;
+    }
+
+private:
+    // Primary hash function: simple method to distribute keys based on ASCII values
+    static int hashFunction(const std::string& key, int tableSize) {
+        int hashValue = 0;
+        for (char c : key) {
+            hashValue += static_cast<int>(c);
+        }
+        return hashValue % tableSize;
+    }
+
+    // Secondary hash function: uses a prime number to ensure a different step size
+    static int secondaryHash(const std::string& key) {
+        int hashValue = 0;
+        for (char c : key) {
+            hashValue += static_cast<int>(c);
+        }
+        return R - (hashValue % R);
+    }
+};
+
+const int HASH_TABLE_SIZE = 100; // Size of the hash table
+std::vector<std::optional<HashTableEntry>> hashTable(HASH_TABLE_SIZE); // The hash table itself
+HashFunction hashFunc; // Hash function object for calculating indexes
+
+// Function prototypes to ensure they are recognized by the test functions below
+bool insertEntry(const std::string& key, int value);
+std::optional<int> searchEntry(const std::string& key);
+bool deleteEntry(const std::string& key);
+
+// Test Functions - Defined after the main functionality to ensure all functions are declared
+void testInsertionBeyondCapacity();
+void testEmptyKeyInsertion();
+void testSearchWithEmptyKey();
+void testDeletionWithEmptyKey();
+void stressTestWithRandomKeys();
+
+// Main program entry point
+int main() {
+    try {
+        testInsertionBeyondCapacity();
+        testEmptyKeyInsertion();
+        testSearchWithEmptyKey();
+        testDeletionWithEmptyKey();
+        stressTestWithRandomKeys();
+    } catch (const std::exception& e) {
+        std::cerr << "Unhandled Exception: " << e.what() << std::endl;
+    }
+
+    return 0;
+}
+
+// Inserts a new entry or updates an existing one, securely handling full table scenarios
+bool insertEntry(const std::string& key, int value) {
+    if (key.empty()) {
+        throw std::invalid_argument("Key cannot be empty."); // Validate key is not empty.
+    }
+    int attempt = 0;
+    while (attempt < HASH_TABLE_SIZE) {
+        int newIndex = hashFunc(key, attempt, HASH_TABLE_SIZE); // Calculate index using double hashing.
+        if (!hashTable[newIndex].has_value() || hashTable[newIndex]->key == key) {
+            hashTable[newIndex] = HashTableEntry(key, value); // Insert or update entry.
+            return true;
+        }
+        attempt++;
+    }
+    throw std::runtime_error("Hash table is full. Failed to insert key: " + key); // Table is full.
+}
+
+std::optional<int> searchEntry(const std::string& key) {
+    if (key.empty()) {
+        throw std::invalid_argument("Key cannot be empty."); // Validate key is not empty.
+    }
+    int attempt = 0;
+    while (attempt < HASH_TABLE_SIZE) {
+        int newIndex = hashFunc(key, attempt, HASH_TABLE_SIZE); // Calculate index using double hashing.
+        if (!hashTable[newIndex].has_value()) {
+            return std::nullopt; // Key not found.
+        } else if (hashTable[newIndex]->key == key) {
+            return hashTable[newIndex]->value; // Key found, return value.
+        }
+        attempt++;
+    }
+    return std::nullopt; // Key not found after all attempts.
+}
+
+bool deleteEntry(const std::string& key) {
+    if (key.empty()) {
+        throw std::invalid_argument("Key cannot be empty."); // Validate key is not empty.
+    }
+    int attempt = 0;
+    while (attempt < HASH_TABLE_SIZE) {
+        int newIndex = hashFunc(key, attempt, HASH_TABLE_SIZE); // Calculate index using double hashing.
+        if (!hashTable[newIndex].has_value()) {
+            throw std::runtime_error("Failed to delete key: " + key + ". Key not found."); // Key not found after all attempts.
+        } else if (hashTable[newIndex]->key == key) {
+            hashTable[newIndex].reset(); // Delete entry.
+            return true;
+        }
+        attempt++;
+    }
+    // This line is theoretically unreachable due to the above throw.
+    return false;
+}
+
+// Tests inserting entries beyond the table's capacity to handle.
+void testInsertionBeyondCapacity() {
+    std::cout << "Testing Insertion Beyond Capacity...\n";
+    try {
+        for (int i = 0; i <= HASH_TABLE_SIZE; ++i) { // Attempt to insert one more entry than the table can hold.
+            insertEntry("Key" + std::to_string(i), i);
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Expected exception for full table: " << e.what() << std::endl;
+    }
+}
+
+// Tests the reaction to trying to insert an entry with an empty key.
+void testEmptyKeyInsertion() {
+    std::cout << "Testing Empty Key Insertion...\n";
+    try {
+        insertEntry("", 999);
+    } catch (const std::exception& e) {
+        std::cout << "Expected exception for empty key: " << e.what() << std::endl;
+    }
+}
+
+// Tests searching for an entry with an empty key.
+void testSearchWithEmptyKey() {
+    std::cout << "Testing Search with Empty Key...\n";
+    try {
+        searchEntry("");
+    } catch (const std::exception& e) {
+        std::cout << "Expected exception for empty key: " << e.what() << std::endl;
+    }
+}
+
+// Tests deleting an entry with an empty key.
+void testDeletionWithEmptyKey() {
+    std::cout << "Testing Deletion with Empty Key...\n";
+    try {
+        deleteEntry("");
+    } catch (const std::exception& e) {
+        std::cout << "Expected exception for empty key: " << e.what() << std::endl;
+    }
+}
+
+// Conducts a stress test by inserting and then optionally deleting a large number of random keys.
+void stressTestWithRandomKeys() {
+    std::cout << "Stress Testing with Random Keys...\n";
+    std::srand(std::time(nullptr)); // Initialize random seed.
+    for (int i = 0; i < 1000; ++i) {
+        try {
+            int randomValue = std::rand();
+            std::string key = "RandomKey" + std::to_string(randomValue);
+            insertEntry(key, randomValue);
+            if (i % 2 == 0) { // Delete every other entry.
+                deleteEntry(key);
+            }
+        } catch (const std::exception& e) {
+            std::cout << "Error during stress test: " << e.what() << std::endl;
+        }
+    }
+}
