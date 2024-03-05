@@ -1,0 +1,129 @@
+#include <vector>
+#include <optional>
+#include <string>
+#include <iostream>
+#include <stdexcept> // Include for std::runtime_error
+
+// Secure and robust hash table entry definition
+struct HashTableEntry {
+    std::string key; // Unique identifier for each entry
+    int value;       // Associated data with the key
+
+    // Ensures proper initialization of hash table entries
+    HashTableEntry(const std::string& key, int value) : key(key), value(value) {}
+};
+
+// Encapsulates hash functions for flexible and secure hashing
+struct HashFunction {
+    static const int R = 97; // Prime number for secondary hashing, chosen for its mathematical properties
+
+    // Implements double hashing to efficiently resolve collisions
+    int operator()(const std::string& key, int attempt, int tableSize) const {
+        int hash1 = hashFunction(key, tableSize);
+        int hash2 = secondaryHash(key);
+        // Ensure index always falls within the table size
+        return (hash1 + attempt * hash2) % tableSize;
+    }
+
+private:
+    // Primary hash function: simple but effective method to distribute keys
+    static int hashFunction(const std::string& key, int tableSize) {
+        int hashValue = 0;
+        for (char c : key) {
+            hashValue += static_cast<int>(c);
+        }
+        return hashValue % tableSize;
+    }
+
+    // Secondary hash function: ensures diverse probe sequences for collision resolution
+    static int secondaryHash(const std::string& key) {
+        int hashValue = 0;
+        for (char c : key) {
+            hashValue += static_cast<int>(c);
+        }
+        return R - (hashValue % R);
+    }
+};
+
+const int HASH_TABLE_SIZE = 100;
+std::vector<std::optional<HashTableEntry>> hashTable(HASH_TABLE_SIZE);
+HashFunction hashFunc; // Facilitates secure and consistent hashing
+
+// Inserts a new entry or updates an existing one, securely handling full table scenarios
+bool insertEntry(const std::string& key, int value) {
+    int attempt = 0;
+    while (attempt < HASH_TABLE_SIZE) {
+        int newIndex = hashFunc(key, attempt, HASH_TABLE_SIZE);
+        if (!hashTable[newIndex].has_value() || hashTable[newIndex]->key == key) {
+            hashTable[newIndex] = HashTableEntry(key, value);
+            return true;
+        }
+        attempt++;
+    }
+    // Throws an exception when the table is full, allowing for graceful error handling
+    throw std::runtime_error("Hash table is full. Failed to insert key: " + key);
+}
+
+// Safely searches for an entry, throwing an exception for invalid inputs
+std::optional<int> searchEntry(const std::string& key) {
+    if (key.empty()) {
+        throw std::invalid_argument("Key cannot be empty.");
+    }
+    int attempt = 0;
+    while (attempt < HASH_TABLE_SIZE) {
+        int newIndex = hashFunc(key, attempt, HASH_TABLE_SIZE);
+        if (!hashTable[newIndex].has_value()) {
+            return std::nullopt;
+        } else if (hashTable[newIndex]->key == key) {
+            return hashTable[newIndex]->value;
+        }
+        attempt++;
+    }
+    return std::nullopt;
+}
+
+// Deletes an entry if it exists, securely handling non-existent keys
+bool deleteEntry(const std::string& key) {
+    if (key.empty()) {
+        throw std::invalid_argument("Key cannot be empty.");
+    }
+    int attempt = 0;
+    while (attempt < HASH_TABLE_SIZE) {
+        int newIndex = hashFunc(key, attempt, HASH_TABLE_SIZE);
+        if (!hashTable[newIndex].has_value()) {
+            // Key not found after exhaustive search implies it doesn't exist
+            throw std::runtime_error("Failed to delete key: " + key + ". Key not found.");
+        } else if (hashTable[newIndex]->key == key) {
+            hashTable[newIndex].reset();
+            return true;
+        }
+        attempt++;
+    }
+    // This line should never be reached due to the above throw
+    return false;
+}
+
+int main() {
+    // Demonstrates secure hash table operations with enhanced error handling
+    try {
+        // Insertion Test
+        std::cout << "Insertion Test\n";
+        insertEntry("Alice", 1);
+        insertEntry("Bob", 2);
+        insertEntry("Charlie", 3);
+
+        // Search Test
+        std::cout << "Search Test\n";
+        std::cout << "Searching for Alice: " << searchEntry("Alice").value_or(-1) << std::endl;
+        std::cout << "Searching for Zoe: " << searchEntry("Zoe").value_or(-1) << std::endl;
+
+        // Deletion Test
+        std::cout << "Deletion Test\n";
+        deleteEntry("Bob");
+        std::cout << "Searching for Bob after deletion: " << searchEntry("Bob").value_or(-1) << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Exception occurred: " << e.what() << std::endl;
+    }
+
+    return 0;
+}
